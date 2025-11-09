@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delhi Weather Dashboard</title>
+<style>
+    body { font-family: Arial, sans-serif; background: linear-gradient(135deg,#89f7fe,#66a6ff); margin:0; padding:0; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; color:#333; }
+    .container { background:white; padding:30px; margin-top:50px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.2); width:400px; text-align:center; }
+    h1 { color:#004aad; }
+    input, select, button { width:80%; padding:10px; margin:10px 0; border-radius:8px; border:1px solid #ccc; font-size:16px; }
+    button { background-color:#007bff; color:white; border:none; cursor:pointer; transition:0.3s; }
+    button:hover { background-color:#0056b3; }
+    #result { margin-top:20px; font-size:16px; }
+    .weather-card { background-color:#f0f8ff; border-radius:10px; padding:15px; margin-top:10px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Delhi Weather Dashboard</h1>
+
+<label for="date">Select Date:</label>
+<input type="date" id="date">
+
+<label for="month">Or Select Month:</label>
+<select id="month">
+<option value="">--Select Month--</option>
+<option value="1">January</option>
+<option value="2">February</option>
+<option value="3">March</option>
+<option value="4">April</option>
+<option value="5">May</option>
+<option value="6">June</option>
+<option value="7">July</option>
+<option value="8">August</option>
+<option value="9">September</option>
+<option value="10">October</option>
+<option value="11">November</option>
+<option value="12">December</option>
+</select>
+
+<button onclick="getWeather()">Get Weather</button>
+<div id="result"></div>
+</div>
+
+<script>
+async function getWeather() {
+    const date = document.getElementById('date').value;
+    const month = document.getElementById('month').value;
+    let url = 'http://127.0.0.1:8000/weather/?';
+
+    if(date) url += `date=${date}`;
+    else if(month) url += `month=${month}`;
+    else { alert('Please select either a date or a month!'); return; }
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '';
+
+        if(data.message || data.error){
+            resultDiv.innerHTML = `<p>${data.message || data.error}</p>`;
+            return;
+        }
+
+        // Aggregate data per date
+        let grouped = {};
+        data.forEach(record => {
+            if(!grouped[record.date]){
+                grouped[record.date] = {temperature:0, humidity:0, pressure:0, heat_index:[], count:0};
+            }
+            grouped[record.date].temperature += record.temperature;
+            grouped[record.date].humidity += record.humidity;
+            grouped[record.date].pressure += record.pressure;
+            grouped[record.date].heat_index.push(record.heat_index || 0);
+            grouped[record.date].count += 1;
+        });
+
+        for(const dateKey in grouped){
+            const rec = grouped[dateKey];
+            const avgTemp = (rec.temperature / rec.count).toFixed(1);
+            const avgHum = (rec.humidity / rec.count).toFixed(1);
+            const avgPress = (rec.pressure / rec.count).toFixed(1);
+            const maxHeat = Math.max(...rec.heat_index).toFixed(1);
+
+            const card = document.createElement('div');
+            card.className = 'weather-card';
+            card.innerHTML = `
+                <b>Date:</b> ${dateKey} <br>
+                <b>Avg Temperature:</b> ${avgTemp} °C <br>
+                <b>Avg Humidity:</b> ${avgHum} % <br>
+                <b>Avg Pressure:</b> ${avgPress} hPa <br>
+                <b>Max Heat Index:</b> ${maxHeat}
+            `;
+            resultDiv.appendChild(card);
+        }
+    } catch(err) {
+        console.error(err);
+        alert('Failed to fetch data. Make sure your API is running.');
+    }
+}
+</script>
+</body>
+</html>
